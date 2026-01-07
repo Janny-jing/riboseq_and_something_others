@@ -1,0 +1,22 @@
+{
+    "index_version": 4,
+    "reference_gfa": [
+        "hg38-tRNAs-50bp"
+    ],
+    "sampling_type": "dense",
+    "k": 31,
+    "num_kmers": 46702,
+    "num_contigs": 1495,
+    "seq_length": 91552,
+    "have_ref_seq": true,
+    "have_edge_vec": false,
+    "SeqHash": "259d1809fa31192e2dfbf09a7871104ad0419ee9757131e42bab80f5770301bb",
+    "NameHash": "9c65cf4819049bfef5f31c1c0475d5012272516af6613ed578aaa6eb52285317",
+    "SeqHash512": "d7c19f810cd62dabcdf0228cfabb05f5493579d9db2ba66eae49bcee54b3bd1a2e202328cbcf0c7799aa49607c4eeff484a77466d9b622ec16321f78148cd80c",
+    "NameHash512": "5aeea225ba85395d73d5c625b58bf71eff69f0a04e790106af82afbcd9817150b09258570def101b912ef121dbec704f91da874b4c7d368b5fc3de334d9824a1",
+    "DecoySeqHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "DecoyNameHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "num_decoys": 0,
+    "first_decoy_index": 18446744073709551615,
+    "keep_duplicates": false
+}

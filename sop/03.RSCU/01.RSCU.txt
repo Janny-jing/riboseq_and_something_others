@@ -1,0 +1,89 @@
+cut -d ‘ ’ -f 3 appris_data.principal.txt>appris_splice_isoform.txt
+grep -wFf appris_splice_isoform.txt Mus_musculus.GRCm39.cds.all.fa >1.txt
+cut -d ':' -f 14 1.txt >2.txt
+sed -i 's/]//g' 2.txt
+cut -d ' ' -f 1 1.txt >3.txt
+sed -i 's/>//g' 3.txt
+sed -i 's/\..*//g' 3.txt
+paste -d '\t' 3.txt 2.txt|sort -k1,1n >4.txt
+awk '{print $3"\t"$1}' appris_data.principal.txt|sort -k1,1n >5.txt
+awk 'NR==FNR{a[$1]=$0;next}NR>FNR{if($1 in a)print a[$1]"_"$2}' 5.txt 4.txt >6.txt
+cut -d ' ' -f1 1.txt >7.txt
+sed -i 's/>//g' 7.txt
+seqkit grep -f 7.txt Mus_musculus.GRCm39.cds.all.fa >mm19_cds.fa
+awk '{print $1}' mm19_cds.fa >mm19_cds_1.fa
+sed -i 's/\..*//g' mm19_cds_1.fa
+seqkit replace --ignore-case --kv-file 6.txt --pattern "^(\w+)" --replacement "{kv}" mm19_cds_1.fa -o GRCh38_cds_nameid.fa
+seqkit replace --ignore-case --kv-file 5.txt --pattern "^(\w+)" --replacement "{kv}" GRCh38_cds_1.fa -o GRCh38_cds_name.fa
+
+AB文件：利用A文件逐行代替B文件的22n-1行内容，其中33600指的是基因个数，可以初步用总行数除以22验证一下
+#! /bin/sh
+
+for((i=1;i<=33600;i++));do
+    n=$[22*$i-1]
+    sed -i "s/`sed -n "$n"p B.txt`/`sed -n "$i"p A.txt`/g" B.txt 
+done
+
+##筛选基因
+egrep -if isg.txt mm19_cds_modify.txt -B 20 >isg_modify.txt
+egrep -iwf antiviral-related_gene.txt GRCh38_cds_name_modify.txt -B 20 >GRCh38_cds_name_modify_antiviral.txt
+
+####缺失的基因
+egrep -iwf antiviral-related_gene.txt GRCh38_cds_name_modify.txt  >1.txt
+egrep -ivwf 2.txt antiviral-related_gene.txt  >lack.txt
+
+#####筛选特定要求的基因，rscu>2
+cat -n GRCh38_cds_nameid_modify.txt >GRCh38_modify.txt
+01.uug.sh
+#! /bin/sh
+
+for((i=1;i<=36221;i++));do
+    n=$[22*$i-18]
+    sed -n "$n"p GRCh38_modify.txt >> 1.txt
+    awk -F"\t" '{if($5>2) print $0}' 1.txt >2.txt
+done
+02.cga.sh
+#! /bin/sh
+
+for((i=1;i<=36221;i++));do
+    n=$[22*$i-14]
+    sed -n "$n"p GRCh38_modify.txt >> 3.txt
+    awk -F"\t" '{if($17>2) print $0}' 3.txt >4.txt
+done
+#出来的结果是满足条件包含所在行数的，筛选冗余，用第一个出来的结果行数加上4，等同于第二个，晒冗余
+cut -f1 2.txt >5.txt
+cut -f1 4.txt >6.txt
+awk '{print $1+4}' 5.txt >7.txt
+awk '{print $1}' 6.txt >>7.txt
+cat 7.txt |sort -k1,1n|uniq > 8.txt
+#筛选最终满足要求的基因
+03.last.sh
+#! /bin/sh
+
+for i in `cat 8.txt`;do
+    n=$[$i-7]
+    j=$[$i+14]
+    sed -n "$n,$j"p GRCh38_cds_nameid_modify.txt >>UUG_CGA.txt
+done
+
+##取交集
+sort -k1,1n uug_4.txt cga.txt |uniq -d >UUG_AND_CGA.txt
+##取补集
+sort -k1,1n cga.txt uug_4.txt uug_4.txt |uniq -u >CGA_uniq.txt
+sort -k1,1n uug_4.txt cga.txt cga.txt |uniq -u >UUG_uniq.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

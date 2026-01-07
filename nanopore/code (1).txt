@@ -1,0 +1,120 @@
+解压缩guppy，所有文件均存放在~/下
+下载模板序列
+wget http://gtrnadb.ucsc.edu/genomes/eukaryota/Hsapi38/hg38-mature-tRNAs.fa
+
+软件安装：
+bioconda：
+# 下载最新款软件
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+#sh 运行这个脚本
+sh Miniconda3-latest-Linux-x86_64.sh  
+
+#1 按回车继续
+Please, press ENTER to continue
+>>>
+#2 是否继续，手动填yes
+Do you accept the license terms? [yes|no]
+[no] >>>  yes
+
+#3 软件安装目录，默认即可，回车继续，开始安装
+[/ifs1/User/wangtong/miniconda3] >>> 
+
+#4 是否需要初始化，手动填yes，这步一定要填yes。
+Do you wish the installer to initialize Miniconda3
+by running conda init? [yes|no]
+[no] >>> 
+
+#刷新一下设置
+source ~/.bashrc 
+
+#命令行直接敲conda，如果能够运行，表明安装成功了
+#通过conda安装其他的软件
+conda install -y bwa samtools bcftools sra-tools seqkit minimap2 miniasm seqtk fastp fastqc nanoplot 
+conda create -n medaka -c conda-forge -c bioconda medaka
+conda install -y pomoxis
+conda install -c bioconda ont-tombo
+
+安装bwa
+wget  http://sourceforge.net/projects/bio-bwa/files/bwa-0.7.17.tar.bz2
+tar  -jxvf  bwa-0.7.17.tar.bz2
+cd  bwa-0.7.17
+make
+vim  ~/.bashrc
+export  PATH=$PATH:/bwapath/bwa-0.7.17
+source  ~/.bashrc
+
+guppy碱基识别
+./guppy/bin/guppy_basecaller -i /dir/fast5/ -s /dir/fastq/ -r --min_qscore 0 --flowcell FLO-MIN106 --kit SQK-RNA002 --num_callers 1 --cpu_threads_per_caller 8
+nanoPlot质控
+NanoPlot -t 4 --fastq clean.fastq.gz -o outdir/
+DNA RNA切换
+seqkit seq ./rna.fq --rna2dna > dna.fastq
+seqkit seq ./dna.fq --dna2rna > rna.fastq
+
+使用bwa比对
+bwa index ref.fa
+bwa mem -W13 -k6 -xont2d -T20 ref.fa tRNA.fq > result.bam
+
+定量bam处理
+必须先排序并建立索引
+排序：
+samtools sort
+samtools idxstats result.sorted.bam>stats.txt
+
+合并fasta文件
+cat *.fa > total.fa
+
+grep -A 2 -e '-AAA-' <ref.fa> AAA.fa
+
+聚类
+
+---------------------------我是分割线--------------------------------
+BULK
+
+fastqc+fastp质量检测
+fastp -i in.fq
+hisat2 -x ref.fq -1 01.fq -2 02.fq -s samfile 
+
+fastqc -o ~/scratch/mouse_timepoint_run/fastqc/ \
+~/scratch/mouse_timepoint_rnaseq_20230620/rawdata_download/fastq/${line}_R1.fastq.gz
+
+fastqc -o ~/scratch/mouse_timepoint_run/fastqc/ \
+~/scratch/mouse_timepoint_rnaseq_20230620/rawdata_download/fastq/${line}_R2.fastq.gz
+
+### ==========trim the fastq.gz files
+fastp -i ~/scratch/mouse_timepoint_rnaseq_20230620/rawdata_download/fastq/${line}_R1.fastq.gz \
+-I ~/scratch/mouse_timepoint_rnaseq_20230620/rawdata_download/fastq/${line}_R2.fastq.gz \
+-o ~/scratch/mouse_timepoint_run/trim/${line}_R1.trimmed.fastq.gz \
+-O ~/scratch/mouse_timepoint_run/trim/${line}_R2.trimmed.fastq.gz \
+-j ~/scratch/mouse_timepoint_run/trim/${line}.trimmed.fastp.json \
+-h ~/scratch/mouse_timepoint_run/trim/${line}.trimmed.fastp.html
+
+###==========hisat2 alignment
+hisat2 -x ~/scratch/grcm38/genome -1 ~/scratch/mouse_timepoint_run/trim/${line}_R1.trimmed.fastq.gz \
+-2 ~/scratch/mouse_timepoint_run/trim/${line}_R2.trimmed.fastq.gz \
+-p 46 \
+-S ~/scratch/mouse_timepoint_run/alignment/${line}.sam \
+--summary-file ~/scratch/mouse_timepoint_run/alignment/${line}.hisat2.log
+### > ~/scratch/mouse_timepoint_run/alignment/${line}.hisat2.log
+
+### =========download corresponding gtf file based on hisat2 reference genome version 84:
+### https://ftp.ensembl.org/pub/release-84/gtf/mus_musculus/
+
+### =========download hisat2 reference genome
+### http://daehwankimlab.github.io/hisat2/download/
+### version grcm38
+
+###=========sam to bam file
+samtools view -bS ~/scratch/mouse_timepoint_run/alignment/${line}.sam > ~/scratch/mouse_timepoint_run/bam/${line}.bam
+samtools sort -@ 46 ~/scratch/mouse_timepoint_run/bam/${line}.bam > ~/scratch/mouse_timepoint_run/bam/${line}.sorted.bam
+
+###=========featurecounts 
+~/projects/def-junding/kailu/Apps/subread-2.0.6-Linux-x86_64/bin/featureCounts -p -O -T 4 \
+--extraAttributes gene_name
+-a ~/scratch/Mus_musculus.GRCm38.84.gtf \
+-o ~/scratch/mouse_timepoint_run/count/${line}.count.txt \
+~/scratch/mouse_timepoint_run/bam/${line}.sorted.bam
+
+# done < ~/scratch/mouse_timepoint_rnaseq_20230620/transfer_batch1.txt
+
+

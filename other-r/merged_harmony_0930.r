@@ -1,0 +1,103 @@
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+
+data <- readRDS("preprocess_merge_data_rpca.rds")
+
+rename_map <- list(
+  "AC" = "Astrocyte",
+  "EPEN" = "Ependymal",
+  "OLG" = "Oligodendrocyte",
+  "Vascular cells" = "Endothelial",
+  "TEINI-ChaT" = "Cholinergic",
+  "TEINI-Gpc3" = "GABA-1",
+  "TEINI-Hpse" = "GABA-2",
+  "TEINI-Il1rapl2" = "GABA-3",
+  "TEINI-Meis2" = "GABA-4",
+  "TEINI-Sst" = "GABA-5",
+  "TEINI-Vip" = "GABA-6",
+  "TEGLU-Abi3bp" = "Glut-1",
+  "TEGLU-Etv1" = "Glut-2",
+  "TEGLU-Grp" = "Glut-3",
+  "TEGLU-Nr4a2" = "Glut-4",
+  "TEGLU-Nxph3" = "Glut-5",
+  "TEGLU-Rxfp1" = "Glut-6",
+  "TEGLU-Slc30a3" = "Glut-7",
+  "MSN-Drd1" = "D1-SPN",
+  "MSN-Drd2" = "D2-SPN"
+)
+
+data@meta.data$celltype_20251016 <- sapply(as.character(data@meta.data$celltype), function(x) {
+  if (x %in% names(rename_map)) {
+    return(rename_map[[x]])
+  } else {
+    return(x)  # 保留未在映射表中的原始名称
+  }
+})
+
+neuron_clusters <- c(
+  "Astrocyte","Astrocytes","Oligodendrocyte precursor cells","Vascular and leptomeningeal cells","Oligodendrocytes",
+  "Telencephalon inhibitory neurons","Telencephalon excitatory neurons", "Ependymal", "Oligodendrocyte", "Hypendymal cells",
+  "Ependymal cells","Endothelial cells",
+  "Endothelial", "Cholinergic","GABA-1","GABA-2","GABA-3","GABA-4","GABA-5",
+  "GABA-6", "Glut-1", "Glut-2", "Glut-3","Glut-4","Glut-5","Glut-6","Glut-7","D1-SPN","D2-SPN","OPC", "VLMC", "Microglia"
+)
+
+selected_cells <- data@meta.data[data@meta.data$celltype_20251016 %in% neuron_clusters, ]
+
+# 创建子集
+sobj_sub <- subset(data, cells = rownames(selected_cells))
+
+# 验证结果
+table(sobj_sub@meta.data$celltype_20251016)
+
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+
+# 步骤1：提取两个数据集
+sobj_dataset1 <- subset(data, subset = dataset == "mouseBrain_308Clusters")
+sobj_dataset2 <- subset(data, subset = dataset == "Our_data")
+
+# 步骤2：为每个数据集创建UMAP图
+plot1 <- DimPlot(sobj_dataset1,
+                group.by = "celltype_20251016",
+                pt.size = 0.3,
+                label = TRUE,
+                repel = TRUE) +
+  ggtitle("Lei Han et al. 2025") +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        legend.position = "right",
+        legend.text = element_text(size = 8))
+
+plot2 <- DimPlot(sobj_dataset2,
+                group.by = "celltype_20251016",
+                pt.size = 0.3,
+                label = TRUE,
+                repel = TRUE) +
+  ggtitle("Our data") +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        legend.position = "right",
+        legend.text = element_text(size = 8))
+
+# 步骤3：组合图形并保存
+combined_plot <- plot1 + plot2 +
+  plot_layout(ncol = 2, guides = "collect") &
+  theme(legend.box = "vertical",
+        legend.key.size = unit(0.4, 'cm'))
+
+# 保存高分辨率图片
+pdf("celltype_20251016.pdf",width=20,height=8)
+print(combined_plot)
+dev.off()
+
+png("celltype_20251016.png", width = 5000, height = 2000, res = 300)
+print(combined_plot)
+dev.off()
+
+png("umap_plot_celltype_20251016_1.png", width = 3000, height = 1500, res = 300)
+DimPlot(sobj_sub,
+        group.by = "celltype_20251016",
+        label = FALSE,
+        pt.size = 0.6)
+dev.off()

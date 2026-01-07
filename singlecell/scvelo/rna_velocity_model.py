@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+import os
+import numpy as np
+import pandas as pd
+import scanpy as sc
+import scvelo as scv
+import warnings
+import matplotlib
+matplotlib.use('Agg')  # Use a non-interactive backend
+import matplotlib.pyplot as plt
+# Suppress warnings for cleaner output
+warnings.filterwarnings('ignore')
+# Define JOB_ID
+JOB_ID = "01"
+# Cell 3: Define Paths
+print("Defining paths...")
+
+# Base paths
+data_base_path = "/storage/liuxiaodongLab/jiangjing/Projects/YutingFu/PD_YutingFu/scvelo/data"
+plots_base_path = "/storage/liuxiaodongLab/jiangjing/Projects/YutingFu/PD_YutingFu/scvelo/plot"
+
+# Ensure the plots directory exists
+os.makedirs(plots_base_path, exist_ok=True)
+
+# File paths
+velocyto_file = os.path.join(data_base_path, 'merged.loom')
+clusters_file = os.path.join(data_base_path, "cell_clusters.csv")
+umap_file = os.path.join(data_base_path, "cell_embeddings.csv")
+path_10x = os.path.join(data_base_path, "filtered_feature_bc_matrix")
+
+# Check if files exist
+required_files = [clusters_file, umap_file, path_10x, velocyto_file]
+for f in required_files:
+    if not os.path.exists(f):
+        print(f"Missing required file: {f}")
+        raise FileNotFoundError(f"Missing data file: {f}")
+
+print("All required files found.")
+# Cell 4: Read Clusters
+print("Reading clusters file...")
+Clusters_Loupe = pd.read_csv(clusters_file, delimiter=',',index_col=0)
+Barcodes = Clusters_Loupe.index
+# Read UMAP exported from Loupe Browser 
+UMAP_Loupe = pd.read_csv(umap_file, delimiter=',',index_col=0)
+# Tansform to Numpy (for formatting)
+UMAP_Loupe = UMAP_Loupe.to_numpy()
+Sample3p = sc.read_10x_mtx(path_10x, var_names='gene_symbols')
+Sample3p_df = Sample3p.to_df()
+Sample3p = Sample3p[Barcodes]
+# Add Clusters from Loupe to object
+Sample3p.obs['Loupe'] = Clusters_Loupe
+
+# Add UMAP from Loupe to object
+Sample3p.obsm["X_umap"] = UMAP_Loupe
+# Read velocyto output
+VelNeutro3p = sc.read(velocyto_file)
+VelNeutro3p.var = VelNeutro3p.var.set_index("var_names")
+VelNeutro3p.obs = VelNeutro3p.obs.set_index("obs_names")
+
+# Step 2: 清理索引名称（可选）
+VelNeutro3p.var_names.name = None
+VelNeutro3p.obs_names.name = None
+
+# Step 3: 处理重复项（如有需要）
+VelNeutro3p.var_names_make_unique()
+VelNeutro3p.obs_names_make_unique()
+Sample3p_union = scv.utils.merge(Sample3p, VelNeutro3p)
+
+print("Computing velocities...")
+scv.pp.filter_and_normalize(Sample3p_union, min_shared_counts = 10, n_top_genes=2000)
+scv.pp.moments(Sample3p_union, n_pcs=30, n_neighbors=30)
+# List of modes to try
+modes = ['steady_state', 'stochastic', 'dynamical']
+
+for mode in modes:
+        print(f"\nComputing velocities using mode='{mode}'...")
+        # Create a copy of the data to avoid overwriting
+        Sample3p_union_tmp = Sample3p_union.copy()
+        if mode == 'dynamical':
+            # Recover dynamics for the dynamical model
+            scv.tl.recover_dynamics(Sample3p_union_tmp, n_jobs=-1)
+            scv.tl.velocity(Sample3p_union_tmp, mode=mode)
+        else:
+            # For 'steady_state' and 'stochastic' modes, no need to recover dynamics
+            scv.tl.velocity(Sample3p_union_tmp, mode=mode)
+        scv.tl.velocity_graph(Sample3p_union_tmp, n_jobs=-1)
+        if mode == 'dynamical':
+            scv.tl.recover_latent_time(Sample3p_union_tmp)
+
+        # Define the save path for the plot
+        plot_filename = f"RNA_velocity_mode_{mode}.png"
+        plot_save_path = os.path.join(plots_base_path, plot_filename)
+        # Generate and save plot
+        if 'Loupe' in Sample3p_union_tmp.obs.columns:
+            print(f"Generating and saving plot with mode = {mode}...")
+            scv.pl.velocity_embedding_stream(
+                Sample3p_union_tmp,
+                basis='X_umap',
+                color='Loupe',
+                fontsize=20,
+                legend_loc="right",
+                legend_fontsize=20,
+                min_mass=2,
+                save=plot_save_path,  # Provide the full path here
+                show=False  # Ensure the plot is not displayed interactively
+            )
+        else:
+            print("Warning: 'Loupe' not found in Sample3p_union_tmp.obs. Skipping plot for Loupe color.")
+
+        print(f"Plot saved to {plot_save_path}")

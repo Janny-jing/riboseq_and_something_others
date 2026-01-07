@@ -1,0 +1,12 @@
+RcisTarget输出：
+RcisTarget的最终输出的data.table（motifEnrichmentTable_wGenes）包含有关motif 富集的以下信息：
+geneSet：基因集的名称
+motif：motif的ID
+NES：基因集中基序的标准化富集得分
+AUC：曲线下的面积（用于计算NES）
+TFinDB：指示突出显示的TF是包含在高置信度注释（两个星号）还是低置信度注释（一个星号）中。
+TF_highConf：根据'motifAnnot_highConfCat'注释到基序的转录因子。 这个是最主要的 就可以从这里看出输入的基因集富集到了哪一些转录因子，从结果中也可以看出一个TF可以与多个motif结合调节不同的基因。
+TF_lowConf：根据'motifAnnot_lowConfCat'注释到主题的转录因子。
+erichedGenes：在给定motif上排名较高的基因。
+nErnGenes：高度排名的基因数量
+rankAtMax：在最大富集时的排名，用于确定富集的基因数。

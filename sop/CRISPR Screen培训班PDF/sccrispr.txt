@@ -1,0 +1,38 @@
+panel.grid.minor.x=element_blank(),legend.position="top",
+axis.text = element_blank(),axis.title = element_blank(),
+axis.ticks = element_blank())
+
+mydata<-read.table("plot_tSNE.txt",header=F,sep="\t")
+mydata[,4] <- as.character(mydata[,4])
+
+### t-SNE 图
+pdf("tSNE.pdf",width=7)
+ggplot(mydata,aes(x=mydata[,2],y=mydata[,3],color=mydata[,4]))+
+geom_point()+
+mytheme+xlab("")+ylab("")+theme(legend.title=element_blank())
+dev.off()
+### gRNA Guilded t-SNE图
+pdf("tSNE_gRNAGuilded.pdf",width=7)
+ggplot(mydata,aes(x=mydata[,2],y=mydata[,3],color=mydata[,5]))+
+geom_point()+
+mytheme+xlab("")+ylab("")+theme(legend.title=element_blank())
+dev.off()
+
+
+# 读取数据
+mydata<-read.table("plot_UMAP.txt",header=F,sep="\t")
+mydata[,4] <- as.character(mydata[,4])
+
+### UMAP 图
+pdf("UMAP.pdf",width=7)
+ggplot(mydata,aes(x=mydata[,2],y=mydata[,3],color=mydata[,4]))+
+geom_point()+
+mytheme+xlab("")+ylab("")+theme(legend.title=element_blank())
+dev.off()
+### gRNA Guilded UMAP图
+pdf("UMAP_gRNAGuilded.pdf",width=7)
+ggplot(mydata,aes(x=mydata[,2],y=mydata[,3],color=mydata[,5]))+
+geom_point()+
+mytheme+xlab("")+ylab("")+theme(legend.title=element_blank())
+dev.off()
+

@@ -1,0 +1,127 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+=head1 Description
+
+This script is used to get the normalized sequencing depth along genome. It invokes samtools,
+so make sure samtools is installed and available in the PATH.
+
+=head1 Usage
+
+get_depth_along_genome.pl <window size> <sam/bam files>  > output
+
+=head1 Example
+
+get_depth_along_genome.pl 1000 H3K27ac.bam >H3K27ac.depth.txt
+
+=head1 Version
+
+v1.0, Ming-an Sun, Feb 12, 2016
+
+v1.1, Ming-an Sun, Aug 4, 2016
+
+v1.2, Ming-an Sun, 2020-03-31, auto-determined input file type
+
+=cut
+
+die `pod2text $0` unless @ARGV>=2;
+
+my $ws = shift;
+my @files = @ARGV;
+
+my %chrs;
+my %deps;
+my $genome_size = 0;
+my $total_base = 0;
+
+foreach my $file (@files){
+    my $type = $file;
+    $type =~ s/^.*\.//;
+    $type = lc($type);
+
+    # type should be bam or sam
+    unless($type eq 'bam' || $type eq 'sam'){
+        warn "Filetype for $file unrecognized: should be bam or sam.\n";
+        exit(1)
+    }
+
+    # if input is bam file, check if samtools exist
+    if($type eq 'bam'){
+        my $tmp = `which samtools`;
+        unless($tmp =~ /^\//){
+            warn "Cannot find samtools\n";
+            exit(1);
+        }
+    }
+
+    # process files
+    warn "Processing $file ...\n";
+    open(IN, $type eq "bam" ? "samtools view -h $file |" : $file)||die"Cannot open $file\n";
+    while(my $ln = <IN>){
+        if($. % 1000000 == 0){
+            warn "Processed $. lines\n";
+        }
+        if($ln =~ /^\@/){
+            if($ln =~ /^\@SQ\s+SN\:(\S+)\s+LN\:(\d+)/){
+                my ($chr, $len) = ($1, $2);
+                if(!defined $chrs{$chr}){
+                    $chrs{$chr} = $len;
+                    $genome_size += $len;
+                }
+                else{
+                    if($chrs{$chr} ne $len){
+                        warn "Error: length of $chr differ in two files ($chrs{$chr} != $len)!\n";
+                        exit(1);
+                    }
+                }
+            }
+        }
+        else{
+            if($ln =~ /^\S+\s+\d+\s+(\S+)\s+(\d+)\s+\S+\s+(\d+)/){
+                my ($chr, $start, $span) = ($1, $2, $3);
+                $total_base += $span;
+                for(my $i=$start; $i<$start+$span; $i++){
+                    my $idx = $i-$i%$ws;
+                    $deps{$chr}{$idx}++;
+                }
+            }
+        }
+    }
+    close IN;
+}
+
+my $mean_depth = $total_base/$genome_size;
+
+warn "Genome size: $genome_size\n";
+warn "Total base : $total_base\n";
+warn "Mean depth : $mean_depth\n";
+
+foreach my $chr (sort keys %chrs){
+    for(my $idx=0; $idx<$chrs{$chr}; $idx+=$ws){
+        if(defined $deps{$chr}{$idx}){
+            printf ("$chr\t$idx\t%.4f\n", $deps{$chr}{$idx}/$mean_depth/$ws);
+        }
+        else{
+            print "$chr\t$idx\t0\n";
+        }
+    }
+}
+
+__END__
+
+@HD     VN:1.0  SO:coordinate
+@SQ     SN:chr2L        LN:23513712
+@SQ     SN:chr2R        LN:25286936
+@SQ     SN:chr3L        LN:28110227
+@SQ     SN:chr3R        LN:32079331
+@SQ     SN:chr4 LN:1348131
+@SQ     SN:chrM LN:19524
+@SQ     SN:chrX LN:23542271
+@SQ     SN:chrY LN:3667352
+@PG     ID:Bowtie       VN:1.1.2        CL:"bowtie --wrapper basic-0 -n 2 -l 28 -p 15 --chunkmbs 512 -k 1 --best -S /data/sunm2/db/iGenome/dm6/Sequence/BowtieIndex/dm6 SppsK_trimmed.fq"
+HWI-ST398:443:C7DAGACXX:4:2307:19259:78206      0       chr2L   95      255     50M     *       0       0       AGTAGTGCCAACATATTGTGCTCTTTGATTTTTTGGCAACCCAAAATGAT      CCBFFFFFHHHHHJJJJJJJJJJJJJHEHIJJJJIJJJJJJJJJJJJJJJ      XA:i:0  MD:Z:48G1       NM:i:1
+HWI-ST398:443:C7DAGACXX:4:1213:18209:89432      16      chr2L   319     255     49M     *       0       0       ACACGACAGAGAGAGAGAGCAGCGGAGATATTTAGATTGCCTATTAAAT       HIHJIJJJJJJJJJJJJIIJJJJJJJJJJJJJIJJJHHHHGFFFFFCCC       XA:i:0  MD:Z:49 NM:i:0
+HWI-ST398:443:C7DAGACXX:4:1305:21127:99623      16      chr2L   357     255     49M     *       0       0       GCCTATTAAATATGATCGCGTATGCGAGAGTAGTGCCAACATATTGTGC       JJJJJJIJJIIJJJJJJJJJJJJJIGJIJJJJJJJJHHHHHFFFFFCCC       XA:i:0  MD:Z:49 NM:i:0
+HWI-ST398:443:C7DAGACXX:4:2302:4393:40459       16      chr2L   357     255     49M     *       0       0       GCCTATTAAATATGATCGCGTATGCGAGAGTAGTGCCAACATATTGTGC       JJJIJJJJJJJJJJJJJJIJJJJJJJJIIIJJJJJIHHHHHFFFFFCCC       XA:i:0  MD:Z:49 NM:i:0
+HWI-ST398:443:C7DAGACXX:4:1312:13698:42696      0       chr2L   396     255     50M     *       0       0       CATATTGTGCTCTCTATATAATGACTGCCTCTCATTCTGTCTTATTTTAC      CCCFFFFFHHHHHIJIJJJJJJJIJJIJJJJIHHGJJJJIIJIJJJJJJJ      XA:i:0  MD:Z:50 NM:i:0

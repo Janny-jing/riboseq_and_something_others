@@ -1,0 +1,94 @@
+import swalign
+
+def reverseComplement(sequence):
+    transtab = str.maketrans("ACGT", "TGCA")
+    return sequence.translate(transtab)[::-1]
+
+
+def alignSequences(ref_seq, query_seq, totalmismatch):
+    match = 4
+    mismatch = -1
+    ref_length = len(ref_seq)
+    matches_required = len(ref_seq) - totalmismatch  # 允许的错配数
+    scoring = swalign.NucleotideScoringMatrix(match, mismatch)
+    sw = swalign.LocalAlignment(scoring, gap_penalty=-100, gap_extension_penalty=-100, prefer_gap_runs=True)  # 可自行设置罚分
+
+    forward_alignment = sw.align(ref_seq, query_seq)
+    reverse_alignment = sw.align(ref_seq, reverseComplement(query_seq))
+
+    def get_alignment_info(alignment, strand):
+        start = alignment.q_pos
+        end = alignment.q_end
+        return [alignment.query[start:end], strand]
+
+    if forward_alignment.matches >= matches_required and forward_alignment.matches > reverse_alignment.matches:
+        print (forward_alignment.dump())
+        return get_alignment_info(forward_alignment, "+")
+    elif reverse_alignment.matches >= matches_required and reverse_alignment.matches > forward_alignment.matches:
+        print (reverse_alignment.dump())
+        return get_alignment_info(reverse_alignment, "-")
+    elif forward_alignment.matches == reverse_alignment.matches and forward_alignment.matches >= matches_required:
+        result = get_alignment_info(forward_alignment, "+")
+        if result[0]:
+            print (forward_alignment.dump())
+            return result
+        else:
+            print (reverse_alignment.dump())
+            return get_alignment_info(reverse_alignment, "-")
+    else :
+        return ["",""]
+
+'''
+def read_fasta(file_path):
+    sequences = []
+    with open(file_path, "r") as file:
+        sequence = ""
+        for line in file:
+            line = line.strip()
+            if line.startswith(">"):
+                if sequence:
+                    sequences.append(sequence)
+                    sequence = ""
+            else:
+                sequence += line
+        if sequence:
+            sequences.append(sequence)
+    return sequences
+
+string2 = "GGGAAAGACCCAGCATCCGTGGG"
+fasta_file = "extended_sequences.fa"
+sequences = read_fasta(fasta_file)
+
+
+for idx, seq in enumerate(sequences):
+    alignment_result = alignSequences(string2 ,seq,6)
+    print(f"Alignment for sequence {idx + 1}:")
+
+    print(alignment_result)
+
+'''
+
+# Function to read sequences from a FASTA file
+def read_fasta(file_path):
+    headers = []
+    sequences = []
+    with open(file_path, "r") as file:
+        for line in file:
+            line = line.strip()
+            if line.startswith(">"):
+                headers.append(line[1:])
+                sequences.append("")
+            else:
+                sequences[-1] += line
+    return headers, sequences
+
+# Main code
+string2 = "GGGAAAGACCCAGCATCCGTGGG"
+fasta_file = "extended_sequences.fa"
+headers, sequences = read_fasta(fasta_file)
+
+for idx, (header, seq) in enumerate(zip(headers, sequences)):
+    alignment_result = alignSequences(string2, seq, 6)
+    print(f"Alignment for sequence {idx + 1}:")
+    print(f"Header: {header}")
+    print(alignment_result)

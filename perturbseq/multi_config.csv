@@ -1,0 +1,11 @@
+[gene-expression]
+reference,/home/jj2024/00.db/01.hg38/10.singlecell_reference/refdata-gex-GRCh38-2024-A
+create-bam,true
+
+[feature]
+reference,/home/jj2024/16.singlerna_lib1/feature_reference.csv
+
+[libraries]
+fastq_id,fastqs,feature_types
+293TMIX,/home/jj2024/16.singlerna_lib1/crispr_lib,CRISPR Guide Capture
+293TMIX,/home/jj2024/16.singlerna_lib1/mRNALib1,Gene Expression

@@ -1,0 +1,27 @@
+library(reticulate)
+library(readr)
+library(loupeR)
+library(Seurat)
+use_python("~/miniconda3/bin/python")
+sceasy::convertFormat("dpc_normalized_20251011.h5ad",from="anndata",to="seurat",outFile="dpc_normalized_20251011.rds")
+sceasy::convertFormat("ips_normalized_20251011.h5ad",from="anndata",to="seurat",outFile="ips_normalized_20251011.rds")
+sceasy::convertFormat("npc_normalized_20251011.h5ad",from="anndata",to="seurat",outFile="npc_normalized_20251011.rds")
+ips <- readRDS("ips_normalized_20251011.rds")
+dpc <- readRDS("dpc_normalized_20251011.rds")
+npc<- readRDS("npc_normalized_20251011.rds")
+barcode <- read_tsv("barcodes.tsv")
+all_barcodes_vec <- as.character(barcode[[1]])
+set.seed(123)
+selected_barcodes <- sample(all_barcodes_vec, size = ncol(ips), replace = FALSE)
+sample_subset <- RenameCells(ips, new.names = selected_barcodes)
+create_loupe_from_seurat(sample_subset, output_name = "ips_normalized_20251011")
+selected_barcodes <- sample(all_barcodes_vec, size = ncol(dpc), replace = FALSE)
+sample_subset <- RenameCells(dpc, new.names = selected_barcodes)
+create_loupe_from_seurat(sample_subset, output_name = "dpc_normalized_20251011")
+selected_barcodes <- sample(all_barcodes_vec, size = ncol(npc), replace = FALSE)
+sample_subset <- RenameCells(npc, new.names = selected_barcodes)
+create_loupe_from_seurat(sample_subset, output_name = "npc_normalized_20251011")
+
+
+
+

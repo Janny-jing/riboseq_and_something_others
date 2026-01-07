@@ -1,0 +1,3 @@
+#! /bin/sh
+
+Rscript --vanilla /home/chen/jiangjing/02.nanoRMS/00.sh/Pseudou_prediction_pairedcondition_transcript.R -f 1 -s 2 -p /home/chen/jiangjing/02.nanoRMS/00.sh/pair.tsv

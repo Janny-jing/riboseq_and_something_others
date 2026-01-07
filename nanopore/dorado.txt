@@ -1,0 +1,13 @@
+cat * > failed.fastq.gz
+gunzip  failed.fastq.gz
+seqkit seq fastq_fail.fastq --rna2dna > fastq_fail_dna.fastq
+路径：/home/jj2024/03.trna/text
+nohup bash /home/jj2024/03.trna/03.samtools_human.sh &
+
+grep '@' fastq_fail_dna.fastq |wc -l
+awk '{sum+=$3} END {print sum}' fastq_pass_dna_trna_stat_q0_mt.txt |less
+
+
+dorado basecaller /home/jj2024/.dorado/models/rna004_130bps_hac@v5.1.0  pod5/ --emit-fastq > 20241107_sample5.fastq
+##dorado basecaller hac  pod5/ --emit-fastq > 20241107_sample5.fastq
+
